@@ -1,6 +1,7 @@
 package libct
 
 import "testing"
+import "syscall"
 
 func TestCreateCT(t *testing.T) {
 	s, err := OpenSession()
@@ -9,6 +10,11 @@ func TestCreateCT(t *testing.T) {
 	}
 
 	ct, err := s.CreateCt()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ct.SetNsMask(syscall.CLONE_NEWNS)
 	if err != nil {
 		t.Fatal(err)
 	}

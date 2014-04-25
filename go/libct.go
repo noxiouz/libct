@@ -105,3 +105,14 @@ func (ct *Container) CtWait() error {
 
 	return err
 }
+
+func (ct *Container) SetNsMask(nsmask uint64) error {
+	req := &RpcRequest{}
+	req.Req = ReqType_CT_SETNSMASK.Enum()
+	req.CtRid = &ct.Rid
+	req.Nsmask = &NsmaskReq{Mask : &nsmask}
+
+	_, err := sendReq(ct.s, req)
+
+	return err
+}
