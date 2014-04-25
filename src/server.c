@@ -128,7 +128,7 @@ static int serve_ct_create(int sk, libct_session_t ses, CreateReq *req)
 {
 	RpcResponce resp = RPC_RESPONCE__INIT;
 	CreateResp cr = CREATE_RESP__INIT;
-	ct_server_t *cs;
+	ct_server_t *cs = NULL;
 
 	cs = __ct_server_create(NULL);
 	if (!cs)
