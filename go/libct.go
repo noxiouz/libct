@@ -13,7 +13,7 @@ type LibctError struct {
 }
 
 func (e LibctError) Error() string {
-	return fmt.Sprintf("LibctError: %x", e.Error)
+	return fmt.Sprintf("LibctError: %x", e.Code)
 }
 
 func OpenSession() (*Session, error) {
