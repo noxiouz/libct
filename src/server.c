@@ -404,17 +404,21 @@ static int serve_req(int sk, libct_session_t ses, RpcRequest *req)
 {
 	ct_server_t *cs = NULL;
 
-	if (req->req == REQ_TYPE__CT_CREATE)
-		return serve_ct_create(sk, ses, req->create);
-	else if (req->req == REQ_TYPE__CT_OPEN)
-		return serve_ct_open(sk, ses, req->create);
-
-	if (req->has_ct_rid)
-		cs = find_ct_by_rid(req->ct_rid);
-	if (!cs)
-		return send_err_resp(sk, LCTERR_BADCTRID);
+	if (req->req == REQ_TYPE__CT_CREATE || req->req == REQ_TYPE__CT_OPEN) {
+		if (req->create == NULL)
+			return send_err_resp(sk, LCTERR_BADARG);
+	} else {
+		if (req->has_ct_rid)
+			cs = find_ct_by_rid(req->ct_rid);
+		if (!cs)
+			return send_err_resp(sk, LCTERR_BADCTRID);
+	}
 
 	switch (req->req) {
+	case REQ_TYPE__CT_CREATE:
+		return serve_ct_create(sk, ses, req->create);
+	case REQ_TYPE__CT_OPEN:
+		return serve_ct_open(sk, ses, req->create);
 	case REQ_TYPE__CT_DESTROY:
 		return serve_ct_destroy(sk, cs, req);
 	case REQ_TYPE__CT_GET_STATE:
