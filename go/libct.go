@@ -5,7 +5,7 @@ import "fmt"
 import prot "code.google.com/p/goprotobuf/proto"
 
 type Session struct {
-	sk net.Conn
+	sk *net.UnixConn
 }
 
 type LibctError struct {
@@ -17,7 +17,11 @@ func (e LibctError) Error() string {
 }
 
 func OpenSession() (*Session, error) {
-	sk, err := net.Dial("unixpacket", "/var/run/libct.sock")
+	addr, err := net.ResolveUnixAddr("unixpacket", "/var/run/libct.sock")
+	if err != nil {
+		return nil, err
+	}
+	sk, err := net.DialUnix("unixpacket", nil, addr)
 	if err != nil {
 		return nil, err
 	}
