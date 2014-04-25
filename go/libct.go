@@ -116,3 +116,30 @@ func (ct *Container) SetNsMask(nsmask uint64) error {
 
 	return err
 }
+
+func (ct *Container)SetFsRoot(root string) error {
+	req := &RpcRequest{}
+	req.Req = ReqType_FS_SETROOT.Enum()
+	req.CtRid = &ct.Rid
+	req.Setroot = &SetrootReq{Root : &root}
+
+	_, err := sendReq(ct.s, req)
+
+	return err
+}
+
+const (
+	CT_FS_NONE	= 0
+	CT_FS_SUBDIR	= 1
+)
+
+func (ct *Container)SetFsPrivate(ptype int32, path string) error {
+	req := &RpcRequest{}
+	req.Req = ReqType_FS_SETPRIVATE.Enum()
+	req.CtRid = &ct.Rid
+	req.Setpriv = &SetprivReq{Type : &ptype, Path : &path}
+
+	_, err := sendReq(ct.s, req)
+
+	return err
+}
