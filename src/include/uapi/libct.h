@@ -37,8 +37,8 @@ void libct_container_close(ct_handler_t ct);
 
 enum ct_state libct_container_state(ct_handler_t ct);
 int libct_container_spawn_cb(ct_handler_t ct, int (*ct_fn)(void *), void *arg);
-int libct_container_spawn_execv(ct_handler_t ct, char *path, char **argv);
-int libct_container_spawn_execve(ct_handler_t ct, char *path, char **argv, char **env);
+int libct_container_spawn_execv(ct_handler_t ct, char *path, char **argv, int *fds);
+int libct_container_spawn_execve(ct_handler_t ct, char *path, char **argv, char **env, int *fds);
 int libct_container_enter_cb(ct_handler_t ct, int (*ct_fn)(void *), void *arg);
 int libct_container_enter_execv(ct_handler_t ct, char *path, char **argv);
 int libct_container_enter_execve(ct_handler_t ct, char *path, char **argv, char **env);

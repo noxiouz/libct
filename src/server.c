@@ -180,14 +180,56 @@ static int serve_get_state(int sk, ct_server_t *cs, RpcRequest *req)
 	return do_send_resp(sk, 0, &resp);
 }
 
+
+int recv_fds(int sk, int *fds, int nr_fds)
+{
+	char data[1024], control[1024];
+	struct msghdr	msg;
+	struct cmsghdr	*cmsg;
+	struct iovec	iov;
+	int i, nr = 0;
+
+	memset(&msg, 0, sizeof(msg));
+	iov.iov_base   = data;
+	iov.iov_len    = sizeof(data)-1;
+	msg.msg_iov    = &iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = control;
+	msg.msg_controllen = sizeof(control);
+	if (recvmsg(sk, &msg, 0) < 0)
+		return -1;
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	while (cmsg != NULL) {
+		if (cmsg->cmsg_level == SOL_SOCKET &&
+		    cmsg->cmsg_type  == SCM_RIGHTS) {
+			nr = (cmsg->cmsg_len - sizeof(struct cmsghdr)) / sizeof(int);
+			if (nr > nr_fds)
+				return -1;
+			for (i = 0; i < nr; i++) {
+				fds[i] = *((int *) CMSG_DATA(cmsg) + i);
+			}
+		}
+                cmsg = CMSG_NXTHDR(&msg, cmsg);
+	}
+
+	return nr;
+}
 static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 {
 	int ret = -1;
+	int fds[3];
+	int i, nr_fds = 0;
 
 	if (req->execv) {
 		ExecvReq *er = req->execv;
 		char **argv;
-		int i;
+
+		if (req->execv->pipes) {
+			nr_fds = recv_fds(sk, fds, 3);
+			if (nr_fds != 3)
+				goto out;
+		}
 
 		argv = xmalloc((er->n_args + 1) * sizeof(char *));
 		if (!argv)
@@ -197,10 +239,13 @@ static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 			argv[i] = er->args[i];
 		argv[i] = NULL;
 
-		ret = libct_container_spawn_execv(cs->ct, er->path, argv);
+		ret = libct_container_spawn_execv(cs->ct, er->path, argv, nr_fds ? fds : NULL);
 		xfree(argv);
+
 	}
 out:
+	for (i = 0; i < nr_fds; i++)
+		close(fds[i]);
 	return send_resp(sk, ret);
 }
 

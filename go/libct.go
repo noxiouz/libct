@@ -2,6 +2,7 @@ package libct
 
 import "net"
 import "fmt"
+import "syscall"
 import prot "code.google.com/p/goprotobuf/proto"
 
 type Session struct {
@@ -34,18 +35,22 @@ type Container struct {
 	Rid uint64
 }
 
-func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
+func __sendReq(s *Session, req *RpcRequest) (error) {
 
 	fmt.Println("Send: ", req.Req.String())
 
 	pkt, err := prot.Marshal(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	s.sk.Write(pkt)
+	return nil
+}
 
-	pkt = make([]byte, 4096)
+func __recvRes(s *Session) (*RpcResponce, error) {
+
+	pkt := make([]byte, 4096)
 	size, err := s.sk.Read(pkt)
 	if err != nil {
 		return nil, err
@@ -65,6 +70,15 @@ func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
 	return res, nil
 }
 
+func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
+	err := __sendReq(s, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return __recvRes(s)
+}
+
 func (s *Session) CreateCt() (*Container, error) {
 	req := &RpcRequest{}
 
@@ -82,7 +96,12 @@ func (s *Session) CreateCt() (*Container, error) {
 	return &Container{s, res.Create.GetRid()}, nil
 }
 
-func (ct *Container) CtExecve(path string, argv []string, env []string) error {
+type Pipes struct {
+	stdin, stdout, stderr int;
+}
+
+func (ct *Container) CtExecve(path string, argv []string, env []string, pipes *Pipes) error {
+	pipes_here := (pipes != nil)
 	req := &RpcRequest{}
 
 	req.Req = ReqType_CT_SPAWN.Enum()
@@ -92,9 +111,24 @@ func (ct *Container) CtExecve(path string, argv []string, env []string) error {
 		Path: &path,
 		Args: argv,
 		Env:  env,
+		Pipes: &pipes_here,
 	}
 
-	_, err := sendReq(ct.s, req)
+	err := __sendReq(ct.s, req)
+	if err != nil {
+		return err
+	}
+
+	if pipes_here {
+		rights := syscall.UnixRights(pipes.stdin, pipes.stdout, pipes.stderr)
+		dummyByte := []byte("x")
+		_, _, err = ct.s.sk.WriteMsgUnix(dummyByte, rights, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = __recvRes(ct.s)
 
 	return err
 }

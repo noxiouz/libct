@@ -1,9 +1,16 @@
 package libct
 
+import "bytes"
+import "io"
 import "testing"
 import "syscall"
+import "os"
 
 func TestCreateCT(t *testing.T) {
+	stdin, err := os.OpenFile("/dev/null", os.O_RDWR, 0);
+	r, w, err := os.Pipe()
+	pipes := Pipes {int(stdin.Fd()), int(w.Fd()), int(stdin.Fd())}
+
 	s, err := OpenSession()
 	if err != nil {
 		t.Fatal(err)
@@ -35,10 +42,16 @@ func TestCreateCT(t *testing.T) {
 	argv[2] = "echo Hello"
 //	argv[2] = "sleep 10"
 	env := make([]string, 0)
-	err = ct.CtExecve("/bin/bash", argv, env)
+	err = ct.CtExecve("/bin/bash", argv, env, &pipes)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	w.Close()
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, r)
+	r.Close()
+	t.Log(buf);
 
 	// wait
 	err = ct.CtWait()

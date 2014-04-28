@@ -316,11 +316,16 @@ struct execv_args {
 	char *path;
 	char **argv;
 	char **env;
+	int *fds;
 };
 
 static int ct_execv(void *a)
 {
 	struct execv_args *ea = a;
+
+	dup2(ea->fds[0], 0);
+	dup2(ea->fds[1], 1);
+	dup2(ea->fds[2], 2);
 
 	/* This gets control in the container's new root (if any) */
 	if (ea->env)
@@ -331,13 +336,14 @@ static int ct_execv(void *a)
 	return -1;
 }
 
-static int local_spawn_execve(ct_handler_t ct, char *path, char **argv, char **env)
+static int local_spawn_execve(ct_handler_t ct, char *path, char **argv, char **env, int *fds)
 {
 	struct execv_args ea;
 
 	ea.path = path;
 	ea.argv = argv;
 	ea.env = env;
+	ea.fds = fds;
 
 	return local_spawn_cb(ct, ct_execv, &ea);
 }
@@ -406,7 +412,7 @@ static int local_enter_execve(ct_handler_t h, char *path, char **argv, char **en
 	ea.path = path;
 	ea.argv = argv;
 
-	return local_spawn_cb(h, ct_execv, &ea);
+	return local_enter_cb(h, ct_execv, &ea);
 }
 
 static int local_ct_kill(ct_handler_t h)

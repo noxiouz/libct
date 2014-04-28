@@ -126,12 +126,15 @@ type ExecvReq struct {
 	Path             *string  `protobuf:"bytes,1,req,name=path" json:"path,omitempty"`
 	Args             []string `protobuf:"bytes,2,rep,name=args" json:"args,omitempty"`
 	Env              []string `protobuf:"bytes,3,rep,name=env" json:"env,omitempty"`
+	Pipes            *bool    `protobuf:"varint,4,opt,name=pipes,def=0" json:"pipes,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
 func (m *ExecvReq) Reset()         { *m = ExecvReq{} }
 func (m *ExecvReq) String() string { return proto.CompactTextString(m) }
 func (*ExecvReq) ProtoMessage()    {}
+
+const Default_ExecvReq_Pipes bool = false
 
 func (m *ExecvReq) GetPath() string {
 	if m != nil && m.Path != nil {
@@ -152,6 +155,13 @@ func (m *ExecvReq) GetEnv() []string {
 		return m.Env
 	}
 	return nil
+}
+
+func (m *ExecvReq) GetPipes() bool {
+	if m != nil && m.Pipes != nil {
+		return *m.Pipes
+	}
+	return Default_ExecvReq_Pipes
 }
 
 type NsmaskReq struct {
