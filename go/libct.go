@@ -79,13 +79,13 @@ func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
 	return __recvRes(s)
 }
 
-func (s *Session) CreateCt() (*Container, error) {
+func (s *Session) CreateCt(name string) (*Container, error) {
 	req := &RpcRequest{}
 
 	req.Req = ReqType_CT_CREATE.Enum()
 
 	req.Create = &CreateReq{
-		Name: prot.String("test"),
+		Name: prot.String(name),
 	}
 
 	res, err := sendReq(s, req)

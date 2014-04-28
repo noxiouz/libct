@@ -16,7 +16,7 @@ func TestCreateCT(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ct, err := s.CreateCt()
+	ct, err := s.CreateCt("test")
 	if err != nil {
 		t.Fatal(err)
 	}
