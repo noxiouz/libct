@@ -233,6 +233,7 @@ func (ct *Container)SetFsPrivate(ptype int32, path string) error {
 func (ct *Container)AddMount(src, dst string) error {
 	req := &RpcRequest{}
 	req.Req = ReqType_FS_ADD_MOUNT.Enum()
+	req.CtRid = &ct.Rid
 	flags := int32(0)
 	req.Mnt = &MountReq{
 				Dst : &dst,
