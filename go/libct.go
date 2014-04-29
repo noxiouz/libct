@@ -245,3 +245,14 @@ func (ct *Container)AddMount(src, dst string) error {
 
 	return err
 }
+
+func (ct *Container)SetOption(opt int32) error {
+	req := &RpcRequest{}
+	req.Req = ReqType_CT_SET_OPTION.Enum()
+	req.CtRid = &ct.Rid
+	req.Setopt = &SetoptionReq{}
+
+	_, err := sendReq(ct.s, req)
+
+	return err
+}
