@@ -42,10 +42,11 @@ func TestCreateCT(t *testing.T) {
 	argv[2] = "echo Hello"
 //	argv[2] = "sleep 10"
 	env := make([]string, 0)
-	err = ct.CtExecve("/bin/bash", argv, env, &pipes)
+	pid, err := ct.Run("/bin/bash", argv, env, &pipes)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(pid)
 
 	w.Close()
 	buf := new(bytes.Buffer)

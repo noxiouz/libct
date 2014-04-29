@@ -33,6 +33,7 @@ func OpenSession() (*Session, error) {
 type Container struct {
 	s   *Session
 	Rid uint64
+	pid int32
 }
 
 func __sendReq(s *Session, req *RpcRequest) (error) {
@@ -93,14 +94,14 @@ func (s *Session) CreateCt(name string) (*Container, error) {
 		return nil, err
 	}
 
-	return &Container{s, res.Create.GetRid()}, nil
+	return &Container{s, res.Create.GetRid(), 0}, nil
 }
 
 type Pipes struct {
 	stdin, stdout, stderr int;
 }
 
-func (ct *Container) CtExecve(path string, argv []string, env []string, pipes *Pipes) error {
+func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes) (int32, error) {
 	pipes_here := (pipes != nil)
 	req := &RpcRequest{}
 
@@ -116,7 +117,7 @@ func (ct *Container) CtExecve(path string, argv []string, env []string, pipes *P
 
 	err := __sendReq(ct.s, req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if pipes_here {
@@ -124,13 +125,13 @@ func (ct *Container) CtExecve(path string, argv []string, env []string, pipes *P
 		dummyByte := []byte("x")
 		_, _, err = ct.s.sk.WriteMsgUnix(dummyByte, rights, nil)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	_, err = __recvRes(ct.s)
+	resp, err := __recvRes(ct.s)
 
-	return err
+	return resp.Execv.GetPid(), err
 }
 
 func (ct *Container) CtWait() error {

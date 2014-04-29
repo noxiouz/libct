@@ -220,6 +220,10 @@ static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 	int ret = -1;
 	int fds[3];
 	int i, nr_fds = 0;
+	RpcResponce resp = RPC_RESPONCE__INIT;
+	ExecvResp ex = EXECV_RESP__INIT;
+
+	resp.execv = &ex;
 
 	if (req->execv) {
 		ExecvReq *er = req->execv;
@@ -240,13 +244,17 @@ static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 		argv[i] = NULL;
 
 		ret = libct_container_spawn_execv(cs->ct, er->path, argv, nr_fds ? fds : NULL);
+		if (ret > 0) {
+			ex.pid = ret;
+			ret = 0;
+		}
 		xfree(argv);
 
 	}
 out:
 	for (i = 0; i < nr_fds; i++)
 		close(fds[i]);
-	return send_resp(sk, ret);
+	return do_send_resp(sk, ret, &resp);
 }
 
 static int serve_enter(int sk, ct_server_t *cs, RpcRequest *req)

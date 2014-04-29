@@ -436,6 +436,22 @@ func (m *StateResp) GetState() uint32 {
 	return 0
 }
 
+type ExecvResp struct {
+	Pid              *int32 `protobuf:"varint,1,req,name=pid" json:"pid,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *ExecvResp) Reset()         { *m = ExecvResp{} }
+func (m *ExecvResp) String() string { return proto.CompactTextString(m) }
+func (*ExecvResp) ProtoMessage()    {}
+
+func (m *ExecvResp) GetPid() int32 {
+	if m != nil && m.Pid != nil {
+		return *m.Pid
+	}
+	return 0
+}
+
 type RpcRequest struct {
 	Req              *ReqType      `protobuf:"varint,1,req,name=req,enum=ReqType" json:"req,omitempty"`
 	CtRid            *uint64       `protobuf:"varint,2,opt,name=ct_rid" json:"ct_rid,omitempty"`
@@ -561,6 +577,7 @@ type RpcResponce struct {
 	Error            *int32      `protobuf:"varint,2,opt,name=error" json:"error,omitempty"`
 	Create           *CreateResp `protobuf:"bytes,3,opt,name=create" json:"create,omitempty"`
 	State            *StateResp  `protobuf:"bytes,4,opt,name=state" json:"state,omitempty"`
+	Execv            *ExecvResp  `protobuf:"bytes,5,opt,name=execv" json:"execv,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -592,6 +609,13 @@ func (m *RpcResponce) GetCreate() *CreateResp {
 func (m *RpcResponce) GetState() *StateResp {
 	if m != nil {
 		return m.State
+	}
+	return nil
+}
+
+func (m *RpcResponce) GetExecv() *ExecvResp {
+	if m != nil {
+		return m.Execv
 	}
 	return nil
 }
