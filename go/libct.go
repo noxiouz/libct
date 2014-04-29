@@ -250,7 +250,7 @@ func (ct *Container)SetOption(opt int32) error {
 	req := &RpcRequest{}
 	req.Req = ReqType_CT_SET_OPTION.Enum()
 	req.CtRid = &ct.Rid
-	req.Setopt = &SetoptionReq{}
+	req.Setopt = &SetoptionReq{ Opt : &opt}
 
 	_, err := sendReq(ct.s, req)
 
