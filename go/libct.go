@@ -97,6 +97,23 @@ func (s *Session) CreateCt(name string) (*Container, error) {
 	return &Container{s, res.Create.GetRid(), 0}, nil
 }
 
+func (s *Session) OpenCt(name string) (*Container, error) {
+	req := &RpcRequest{}
+
+	req.Req = ReqType_CT_OPEN.Enum()
+
+	req.Create = &CreateReq{
+		Name: prot.String(name),
+	}
+
+	res, err := sendReq(s, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Container{s, res.Create.GetRid(), 0}, nil
+}
+
 type Pipes struct {
 	stdin, stdout, stderr int;
 }
