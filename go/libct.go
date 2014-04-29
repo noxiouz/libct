@@ -134,7 +134,7 @@ func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes)
 	return resp.Execv.GetPid(), err
 }
 
-func (ct *Container) CtWait() error {
+func (ct *Container) Wait() error {
 	req := &RpcRequest{}
 
 	req.Req = ReqType_CT_WAIT.Enum()
@@ -143,6 +143,36 @@ func (ct *Container) CtWait() error {
 	_, err := sendReq(ct.s, req)
 
 	return err
+}
+
+func (ct *Container) Kill() error {
+	req := &RpcRequest{}
+
+	req.Req = ReqType_CT_KILL.Enum()
+	req.CtRid = &ct.Rid
+
+	_, err := sendReq(ct.s, req)
+
+	return err
+}
+
+const (
+	CT_ERROR	= -1
+	CT_STOPPED	= 0
+	CT_RUNNING	= 1
+)
+func (ct *Container) State() (int, error) {
+	req := &RpcRequest{}
+
+	req.Req = ReqType_CT_KILL.Enum()
+	req.CtRid = &ct.Rid
+
+	resp, err := sendReq(ct.s, req)
+	if err != nil {
+		return CT_ERROR, err
+	}
+
+	return int(resp.State.GetState()), nil
 }
 
 func (ct *Container) SetNsMask(nsmask uint64) error {

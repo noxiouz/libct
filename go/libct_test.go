@@ -55,7 +55,7 @@ func TestCreateCT(t *testing.T) {
 	t.Log(buf);
 
 	// wait
-	err = ct.CtWait()
+	err = ct.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
