@@ -6,6 +6,9 @@
 #include <sys/mount.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "xmalloc.h"
 #include "list.h"
@@ -323,13 +326,22 @@ static int ct_execv(void *a)
 {
 	struct execv_args *ea = a;
 
+	setsid();
 	if (ea->fds) {
 		dup2(ea->fds[0], 0);
 		dup2(ea->fds[1], 1);
 		dup2(ea->fds[2], 2);
+	} else {
+		int fd;
+		fd = open("/dev/console", O_RDWR);
+		if (fd >= 0) {
+			dup2(fd, 0);
+			dup2(fd, 1);
+			dup2(fd, 2);
+			close(fd);
+		}
 	}
 
-	sleep(10);
 	/* This gets control in the container's new root (if any) */
 	if (ea->env)
 		execve(ea->path, ea->argv, ea->env);
