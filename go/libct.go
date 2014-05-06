@@ -147,6 +147,9 @@ func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes)
 	}
 
 	resp, err := __recvRes(ct.s)
+	if err != nil {
+		return 0, err
+	}
 
 	return resp.Execv.GetPid(), err
 }
@@ -174,14 +177,15 @@ func (ct *Container) Kill() error {
 }
 
 const (
-	CT_ERROR	= -1
+	CT_ERROR int	= -1
 	CT_STOPPED	= 0
 	CT_RUNNING	= 1
 )
+
 func (ct *Container) State() (int, error) {
 	req := &RpcRequest{}
 
-	req.Req = ReqType_CT_KILL.Enum()
+	req.Req = ReqType_CT_GET_STATE.Enum()
 	req.CtRid = &ct.Rid
 
 	resp, err := sendReq(ct.s, req)
