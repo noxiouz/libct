@@ -115,7 +115,7 @@ func (s *Session) OpenCt(name string) (*Container, error) {
 }
 
 type Pipes struct {
-	stdin, stdout, stderr int;
+	Stdin, Stdout, Stderr int;
 }
 
 func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes) (int32, error) {
@@ -138,7 +138,7 @@ func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes)
 	}
 
 	if pipes_here {
-		rights := syscall.UnixRights(pipes.stdin, pipes.stdout, pipes.stderr)
+		rights := syscall.UnixRights(pipes.Stdin, pipes.Stdout, pipes.Stderr)
 		dummyByte := []byte("x")
 		_, _, err = ct.s.sk.WriteMsgUnix(dummyByte, rights, nil)
 		if err != nil {
