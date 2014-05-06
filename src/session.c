@@ -24,6 +24,7 @@ static const struct backend_ops local_session_ops = {
 	.type = BACKEND_LOCAL,
 	.create_ct = create_local_ct,
 	.close = close_local_session,
+	.update_ct_state = update_container_state,
 };
 
 libct_session_t libct_session_open_local(void)

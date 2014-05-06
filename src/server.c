@@ -11,6 +11,8 @@
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <signal.h>
+#include <sys/signalfd.h>
 #include <sys/un.h>
 
 #include "uapi/libct.h"
@@ -538,7 +540,8 @@ int libct_session_export(libct_session_t s)
 {
 	struct local_session *l = s2ls(s);
 	struct epoll_event ev;
-	int efd, ret = -1;
+	int efd, ret = -1, sig_fd;
+	sigset_t mask;
 
 	if (s->ops->type != BACKEND_LOCAL)
 		return -1;
@@ -550,6 +553,20 @@ int libct_session_export(libct_session_t s)
 	ev.events = EPOLLIN;
 	ev.data.fd = l->server_sk;
 	if (epoll_ctl(efd, EPOLL_CTL_ADD, l->server_sk, &ev) < 0)
+		goto err;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &mask, NULL);
+	sig_fd = signalfd(-1, &mask, SFD_CLOEXEC);
+	if (sig_fd < 0) {
+		pr_perror("signalfd");
+		goto err;
+	}
+
+	ev.events = EPOLLIN;
+	ev.data.fd = sig_fd;
+	if (epoll_ctl(efd, EPOLL_CTL_ADD, sig_fd, &ev) < 0)
 		goto err;
 
 	while (1) {
@@ -576,6 +593,19 @@ int libct_session_export(libct_session_t s)
 			ev.data.fd = ask;
 			if (epoll_ctl(efd, EPOLL_CTL_ADD, ask, &ev) < 0)
 				close(ask);
+
+			continue;
+		} else if (ev.data.fd == sig_fd) {
+			struct signalfd_siginfo info;
+
+			if (read(sig_fd, &info, sizeof(info)) != sizeof(info)) {
+				pr_perror("read from signalfd");
+				goto err;
+			}
+
+			pr_debug("signalfd: pid %d\n", info.ssi_pid);
+
+			l->s.ops->update_ct_state(&l->s, info.ssi_pid);
 
 			continue;
 		}

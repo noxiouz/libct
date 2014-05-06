@@ -43,6 +43,20 @@ static void local_ct_destroy(ct_handler_t h)
 	xfree(ct);
 }
 
+static int local_ct_wait(ct_handler_t h);
+void update_container_state(libct_session_t s, pid_t pid)
+{
+	ct_handler_t h;
+
+	list_for_each_entry(h, &s->s_cts, s_lh) {
+		struct container *ct = cth2ct(h);
+		if (ct->root_pid != pid)
+			continue;
+
+		local_ct_wait(h);
+	}
+}
+
 static int local_set_nsmask(ct_handler_t h, unsigned long nsmask)
 {
 	struct container *ct = cth2ct(h);
