@@ -40,6 +40,33 @@ typedef struct {
 static LIST_HEAD(ct_servers);
 static unsigned long rids = 1;
 
+struct srv_async_args {
+	int sk;
+	ct_handler_t h;
+};
+
+static int do_send_resp(int sk, int err, RpcResponce *resp);
+static int send_resp_with_id(int sk, uint64_t id, int err)
+{
+	RpcResponce resp = RPC_RESPONCE__INIT;
+	return do_send_resp(sk, err, &resp);
+}
+
+static int rpc_wait_callback(libct_session_t s, RpcRequest *req, void *req_args, int type, void *args)
+{
+	ct_handler_t h = args;
+	struct srv_async_args *srv_args = req_args;
+
+	if (h != srv_args->h)
+		return 0;
+
+	send_resp_with_id(srv_args->sk, req->req_id, 0); //FIXME id
+
+	xfree(srv_args);
+
+	return 1;
+}
+
 static ct_server_t *find_ct_by_rid(unsigned long rid)
 {
 	ct_server_t *cs;
@@ -283,7 +310,20 @@ static int serve_kill(int sk, ct_server_t *cs, RpcRequest *req)
 
 static int serve_wait(int sk, ct_server_t *cs, RpcRequest *req)
 {
-	return send_resp(sk, libct_container_wait(cs->ct));
+	struct srv_async_args *srv_args = NULL;
+
+	srv_args = xmalloc(sizeof(struct srv_async_args));
+	if (srv_args == NULL)
+		goto err;
+
+	if (rpc_async_add(req, srv_args))
+		goto err;
+
+	return 0;
+err:
+	xfree(srv_args);
+	send_resp(sk, -1);
+	return -1;
 }
 
 static int serve_setnsmask(int sk, ct_server_t *cs, RpcRequest *req)
@@ -531,7 +571,8 @@ static int serve(int sk, libct_session_t ses)
 		return -1;
 
 	ret = serve_req(sk, ses, req);
-	rpc_request__free_unpacked(req, NULL);
+	if (ret != 1)
+		rpc_request__free_unpacked(req, NULL);
 
 	return ret;
 }
@@ -545,6 +586,8 @@ int libct_session_export(libct_session_t s)
 
 	if (s->ops->type != BACKEND_LOCAL)
 		return -1;
+
+	s->ops->async_cb = rpc_wait_callback;
 
 	efd = epoll_create1(0);
 	if (efd < 0)

@@ -44,6 +44,7 @@ static void local_ct_destroy(ct_handler_t h)
 }
 
 static int local_ct_wait(ct_handler_t h);
+
 void update_container_state(libct_session_t s, pid_t pid)
 {
 	ct_handler_t h;
@@ -54,6 +55,8 @@ void update_container_state(libct_session_t s, pid_t pid)
 			continue;
 
 		local_ct_wait(h);
+
+		rpc_async_run(s, CT_STATE, (void *) h);
 	}
 }
 

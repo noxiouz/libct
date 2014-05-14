@@ -439,7 +439,7 @@ static void close_pbunix_session(libct_session_t s)
 	xfree(us);
 }
 
-static const struct backend_ops pbunix_session_ops = {
+static struct backend_ops pbunix_session_ops = {
 	.type		= BACKEND_UNIX,
 	.create_ct	= send_create_req,
 	.open_ct	= send_openct_req,

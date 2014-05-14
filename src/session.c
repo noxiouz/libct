@@ -20,7 +20,7 @@ static ct_handler_t create_local_ct(libct_session_t s, char *name)
 	return ct_create(name);
 }
 
-static const struct backend_ops local_session_ops = {
+static struct backend_ops local_session_ops = {
 	.type = BACKEND_LOCAL,
 	.create_ct = create_local_ct,
 	.close = close_local_session,

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include "test.h"
+#include "libct.h"
 
 static int set_ct_alive(void *a)
 {

@@ -3,6 +3,7 @@
 
 #include "list.h"
 #include "ct.h"
+#include "rpc.h"
 
 struct container;
 
@@ -18,10 +19,11 @@ struct backend_ops {
 	ct_handler_t (*open_ct)(libct_session_t s, char *name);
 	void	     (*update_ct_state)(libct_session_t s, pid_t pid);
 	void (*close)(libct_session_t s);
+	rpc_callback *async_cb;
 };
 
 struct libct_session {
-	const struct backend_ops *ops;
+	struct backend_ops *ops;
 	struct list_head s_cts;
 };
 
