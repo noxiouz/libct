@@ -36,6 +36,7 @@ int rpc_async_run(libct_session_t s, int type, void *args)
 	int ret;
 
 	list_for_each_entry(req, &rpc_async_list, node) {
+		pr_err("\n");
 		ret = s->ops->async_cb(s, req->req, req->args, type,  args);
 		if (ret < 0)
 			return -1;

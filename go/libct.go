@@ -7,6 +7,7 @@ import prot "code.google.com/p/goprotobuf/proto"
 
 type Session struct {
 	sk *net.UnixConn
+	resp_map map[uint64]chan *RpcResponce
 }
 
 type LibctError struct {
@@ -27,7 +28,32 @@ func OpenSession() (*Session, error) {
 		return nil, err
 	}
 
-	return &Session{sk}, nil
+	s := &Session{sk, map[uint64]chan *RpcResponce{}}
+	go func() {
+		for {
+			resp, err := __recvRes(s)
+			if err != nil {
+				return
+			}
+			fmt.Println("Send in chanel", *resp.ReqId)
+			s.resp_map[*resp.ReqId] <- resp
+			fmt.Println("Send in chanel done")
+		}
+	}()
+
+	return s, nil
+}
+
+func (s *Session)_sendReq(req *RpcRequest) (chan *RpcResponce, error) {
+	c := make(chan *RpcResponce)
+	s.resp_map[*req.ReqId] = c
+
+	err := __sendReq(s, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
 
 type Container struct {
@@ -38,7 +64,7 @@ type Container struct {
 
 func __sendReq(s *Session, req *RpcRequest) (error) {
 
-	fmt.Println("Send: ", req.Req.String())
+	fmt.Println("Send: ", req.Req.String(), *req.ReqId)
 
 	pkt, err := prot.Marshal(req)
 	if err != nil {
@@ -46,6 +72,7 @@ func __sendReq(s *Session, req *RpcRequest) (error) {
 	}
 
 	s.sk.Write(pkt)
+	fmt.Println("Send: done", req.Req.String())
 	return nil
 }
 
@@ -72,16 +99,29 @@ func __recvRes(s *Session) (*RpcResponce, error) {
 }
 
 func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
-	err := __sendReq(s, req)
+	c, err := s._sendReq(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return __recvRes(s)
+	fmt.Println("Wait resp on ", req.Req.String())
+	resp := <-c
+	return resp, nil
+}
+
+var id uint64 = 0;
+
+func getRpcReq() (*RpcRequest) {
+	req := &RpcRequest{}
+	i := id
+	id++;
+	fmt.Println("getRpcReq ", id)
+	req.ReqId = &i;
+	return req
 }
 
 func (s *Session) CreateCt(name string) (*Container, error) {
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_CREATE.Enum()
 
@@ -98,7 +138,7 @@ func (s *Session) CreateCt(name string) (*Container, error) {
 }
 
 func (s *Session) OpenCt(name string) (*Container, error) {
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_OPEN.Enum()
 
@@ -120,7 +160,7 @@ type Pipes struct {
 
 func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes) (int32, error) {
 	pipes_here := (pipes != nil)
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_SPAWN.Enum()
 	req.CtRid = &ct.Rid
@@ -155,7 +195,7 @@ func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes)
 }
 
 func (ct *Container) Wait() error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_WAIT.Enum()
 	req.CtRid = &ct.Rid
@@ -166,7 +206,7 @@ func (ct *Container) Wait() error {
 }
 
 func (ct *Container) Kill() error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_KILL.Enum()
 	req.CtRid = &ct.Rid
@@ -183,7 +223,7 @@ const (
 )
 
 func (ct *Container) State() (int, error) {
-	req := &RpcRequest{}
+	req := getRpcReq()
 
 	req.Req = ReqType_CT_GET_STATE.Enum()
 	req.CtRid = &ct.Rid
@@ -197,7 +237,7 @@ func (ct *Container) State() (int, error) {
 }
 
 func (ct *Container) SetNsMask(nsmask uint64) error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 	req.Req = ReqType_CT_SETNSMASK.Enum()
 	req.CtRid = &ct.Rid
 	req.Nsmask = &NsmaskReq{Mask : &nsmask}
@@ -208,7 +248,7 @@ func (ct *Container) SetNsMask(nsmask uint64) error {
 }
 
 func (ct *Container)SetFsRoot(root string) error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 	req.Req = ReqType_FS_SETROOT.Enum()
 	req.CtRid = &ct.Rid
 	req.Setroot = &SetrootReq{Root : &root}
@@ -224,7 +264,7 @@ const (
 )
 
 func (ct *Container)SetFsPrivate(ptype int32, path string) error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 	req.Req = ReqType_FS_SETPRIVATE.Enum()
 	req.CtRid = &ct.Rid
 	req.Setpriv = &SetprivReq{Type : &ptype, Path : &path}
@@ -235,7 +275,7 @@ func (ct *Container)SetFsPrivate(ptype int32, path string) error {
 }
 
 func (ct *Container)AddMount(src, dst string) error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 	req.Req = ReqType_FS_ADD_MOUNT.Enum()
 	req.CtRid = &ct.Rid
 	flags := int32(0)
@@ -251,7 +291,7 @@ func (ct *Container)AddMount(src, dst string) error {
 }
 
 func (ct *Container)SetOption(opt int32) error {
-	req := &RpcRequest{}
+	req := getRpcReq()
 	req.Req = ReqType_CT_SET_OPTION.Enum()
 	req.CtRid = &ct.Rid
 	req.Setopt = &SetoptionReq{ Opt : &opt}

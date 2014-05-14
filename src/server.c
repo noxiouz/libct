@@ -46,9 +46,11 @@ struct srv_async_args {
 };
 
 static int do_send_resp(int sk, int err, RpcResponce *resp);
-static int send_resp_with_id(int sk, uint64_t id, int err)
+static int send_resp(int sk, uint64_t id, int err)
 {
+	pr_err("%d %d\n", id, err);
 	RpcResponce resp = RPC_RESPONCE__INIT;
+	resp.req_id = id;
 	return do_send_resp(sk, err, &resp);
 }
 
@@ -57,10 +59,12 @@ static int rpc_wait_callback(libct_session_t s, RpcRequest *req, void *req_args,
 	ct_handler_t h = args;
 	struct srv_async_args *srv_args = req_args;
 
+	pr_err("\n");
 	if (h != srv_args->h)
 		return 0;
+	pr_err("\n");
 
-	send_resp_with_id(srv_args->sk, req->req_id, 0); //FIXME id
+	send_resp(srv_args->sk, req->req_id, 0);
 
 	xfree(srv_args);
 
@@ -121,12 +125,6 @@ static int do_send_resp(int sk, int err, RpcResponce *resp)
 		return -1;
 	else
 		return 0;
-}
-
-static int send_resp(int sk, int err)
-{
-	RpcResponce resp = RPC_RESPONCE__INIT;
-	return do_send_resp(sk, err, &resp);
 }
 
 static ct_server_t *__ct_server_create(ct_handler_t ct)
@@ -195,7 +193,7 @@ static int serve_ct_open(int sk, libct_session_t ses, CreateReq *req)
 static int serve_ct_destroy(int sk, ct_server_t *cs, RpcRequest *req)
 {
 	__ct_server_destroy(cs);
-	return send_resp(sk, 0);
+	return send_resp(sk, req->req_id, 0);
 }
 
 static int serve_get_state(int sk, ct_server_t *cs, RpcRequest *req)
@@ -292,7 +290,7 @@ static int serve_enter(int sk, ct_server_t *cs, RpcRequest *req)
 	int ret = -1;
 
 	if (!er)
-		return send_resp(sk, ret);
+		return send_resp(sk, req->req_id, ret);
 
 	if (er->n_env)
 		ret = libct_container_enter_execve(cs->ct, er->path,
@@ -300,29 +298,35 @@ static int serve_enter(int sk, ct_server_t *cs, RpcRequest *req)
 	else
 		ret = libct_container_enter_execv(cs->ct, er->path,
 						  er->args);
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_kill(int sk, ct_server_t *cs, RpcRequest *req)
 {
-	return send_resp(sk, libct_container_kill(cs->ct));
+	return send_resp(sk, req->req_id, libct_container_kill(cs->ct));
 }
 
 static int serve_wait(int sk, ct_server_t *cs, RpcRequest *req)
 {
 	struct srv_async_args *srv_args = NULL;
 
+	pr_err("\n");
 	srv_args = xmalloc(sizeof(struct srv_async_args));
 	if (srv_args == NULL)
 		goto err;
 
-	if (rpc_async_add(req, srv_args))
+	srv_args->sk = sk;
+	srv_args->h = cs->ct;
+
+	if (rpc_async_add(req, srv_args) < 0)
 		goto err;
 
-	return 0;
+	pr_err("\n");
+
+	return 1;
 err:
 	xfree(srv_args);
-	send_resp(sk, -1);
+	send_resp(sk,  req->req_id, -1);
 	return -1;
 }
 
@@ -332,7 +336,7 @@ static int serve_setnsmask(int sk, ct_server_t *cs, RpcRequest *req)
 
 	if (req->nsmask)
 		ret = libct_container_set_nsmask(cs->ct, req->nsmask->mask);
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_addcntl(int sk, ct_server_t *cs, RpcRequest *req)
@@ -341,7 +345,7 @@ static int serve_addcntl(int sk, ct_server_t *cs, RpcRequest *req)
 
 	if (req->addcntl)
 		ret = libct_controller_add(cs->ct, req->addcntl->ctype);
-	return send_resp(sk, ret);
+	return send_resp(sk,  req->req_id, ret);
 }
 
 static int serve_cfgcntl(int sk, ct_server_t *cs, RpcRequest *req)
@@ -352,7 +356,7 @@ static int serve_cfgcntl(int sk, ct_server_t *cs, RpcRequest *req)
 		ret = libct_controller_configure(cs->ct, req->cfgcntl->ctype,
 						 req->cfgcntl->param,
 						 req->cfgcntl->value);
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_setroot(int sk, ct_server_t *cs, RpcRequest *req)
@@ -361,7 +365,7 @@ static int serve_setroot(int sk, ct_server_t *cs, RpcRequest *req)
 
 	if (req->setroot)
 		ret = libct_fs_set_root(cs->ct, req->setroot->root);
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_setpriv(int sk, ct_server_t *cs, RpcRequest *req)
@@ -384,7 +388,7 @@ static int serve_setpriv(int sk, ct_server_t *cs, RpcRequest *req)
 		}
 	}
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_addmount(int sk, ct_server_t *cs, RpcRequest *req)
@@ -395,7 +399,7 @@ static int serve_addmount(int sk, ct_server_t *cs, RpcRequest *req)
 		ret = libct_fs_add_mount(cs->ct, req->mnt->src,
 					 req->mnt->dst, req->mnt->flags);
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_delmount(int sk, ct_server_t *cs, RpcRequest *req)
@@ -405,7 +409,7 @@ static int serve_delmount(int sk, ct_server_t *cs, RpcRequest *req)
 	if (req->mnt)
 		ret = libct_fs_del_mount(cs->ct, req->mnt->dst);
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_set_option(int sk, ct_server_t *cs, RpcRequest *req)
@@ -429,7 +433,7 @@ static int serve_set_option(int sk, ct_server_t *cs, RpcRequest *req)
 		break;
 	}
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_net_req(int sk, ct_server_t *cs, RpcRequest *req, bool add)
@@ -461,7 +465,7 @@ static int serve_net_req(int sk, ct_server_t *cs, RpcRequest *req, bool add)
 		xfree(arg);
 	}
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_net_add(int sk, ct_server_t *cs, RpcRequest *req)
@@ -481,7 +485,7 @@ static int serve_uname(int sk, ct_server_t *cs, RpcRequest *req)
 	if (req->uname)
 		ret = libct_container_uname(cs->ct, req->uname->host, req->uname->domain);
 
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_caps(int sk, ct_server_t *cs, RpcRequest *req)
@@ -492,7 +496,7 @@ static int serve_caps(int sk, ct_server_t *cs, RpcRequest *req)
 		ret = libct_container_set_caps(cs->ct,
 					       (unsigned long)req->caps->mask,
 					       (unsigned int)req->caps->apply_to);
-	return send_resp(sk, ret);
+	return send_resp(sk, req->req_id, ret);
 }
 
 static int serve_req(int sk, libct_session_t ses, RpcRequest *req)
@@ -587,6 +591,7 @@ int libct_session_export(libct_session_t s)
 	if (s->ops->type != BACKEND_LOCAL)
 		return -1;
 
+	pr_err("\n");
 	s->ops->async_cb = rpc_wait_callback;
 
 	efd = epoll_create1(0);
@@ -618,6 +623,7 @@ int libct_session_export(libct_session_t s)
 		n = epoll_wait(efd, &ev, 1, -1);
 		if (n <= 0)
 			 break;
+		pr_err("\n");
 
 		if (ev.data.fd == l->server_sk) {
 			/*

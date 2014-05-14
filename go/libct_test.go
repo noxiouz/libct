@@ -35,11 +35,13 @@ func TestCreateCT(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	return
+
 	// exec
 	argv := make([]string, 3)
 	argv[0] = "bash"
 	argv[1] = "-c"
-	argv[2] = "echo Hello"
+	argv[2] = "echo Hello; sleep 10"
 //	argv[2] = "sleep 10"
 	env := make([]string, 0)
 	pid, err := ct.Run("/bin/bash", argv, env, &pipes)
@@ -50,12 +52,14 @@ func TestCreateCT(t *testing.T) {
 
 	w.Close()
 	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, r)
-	r.Close()
-	t.Log(buf);
+	go func() {
+		_, err = io.Copy(buf, r)
+		r.Close()
+	}()
 
 	// wait
 	err = ct.Wait()
+	t.Log(buf);
 	if err != nil {
 		t.Fatal(err)
 	}

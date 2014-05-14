@@ -467,6 +467,7 @@ type RpcRequest struct {
 	Mnt              *MountReq     `protobuf:"bytes,12,opt,name=mnt" json:"mnt,omitempty"`
 	Uname            *UnameReq     `protobuf:"bytes,13,opt,name=uname" json:"uname,omitempty"`
 	Caps             *CapsReq      `protobuf:"bytes,14,opt,name=caps" json:"caps,omitempty"`
+	ReqId            *uint64       `protobuf:"varint,15,req,name=req_id" json:"req_id,omitempty"`
 	XXX_unrecognized []byte        `json:"-"`
 }
 
@@ -572,12 +573,20 @@ func (m *RpcRequest) GetCaps() *CapsReq {
 	return nil
 }
 
+func (m *RpcRequest) GetReqId() uint64 {
+	if m != nil && m.ReqId != nil {
+		return *m.ReqId
+	}
+	return 0
+}
+
 type RpcResponce struct {
 	Success          *bool       `protobuf:"varint,1,req,name=success" json:"success,omitempty"`
 	Error            *int32      `protobuf:"varint,2,opt,name=error" json:"error,omitempty"`
 	Create           *CreateResp `protobuf:"bytes,3,opt,name=create" json:"create,omitempty"`
 	State            *StateResp  `protobuf:"bytes,4,opt,name=state" json:"state,omitempty"`
 	Execv            *ExecvResp  `protobuf:"bytes,5,opt,name=execv" json:"execv,omitempty"`
+	ReqId            *uint64     `protobuf:"varint,6,req,name=req_id" json:"req_id,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -618,6 +627,13 @@ func (m *RpcResponce) GetExecv() *ExecvResp {
 		return m.Execv
 	}
 	return nil
+}
+
+func (m *RpcResponce) GetReqId() uint64 {
+	if m != nil && m.ReqId != nil {
+		return *m.ReqId
+	}
+	return 0
 }
 
 func init() {
