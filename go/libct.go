@@ -44,11 +44,11 @@ func OpenSession() (*Session, error) {
 	return s, nil
 }
 
-func (s *Session)_sendReq(req *RpcRequest) (chan *RpcResponce, error) {
+func (s *Session)_sendReq(req *RpcRequest, pipes *Pipes) (chan *RpcResponce, error) {
 	c := make(chan *RpcResponce)
 	s.resp_map[*req.ReqId] = c
 
-	err := __sendReq(s, req)
+	err := __sendReq(s, req, pipes)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ type Container struct {
 	pid int32
 }
 
-func __sendReq(s *Session, req *RpcRequest) (error) {
+func __sendReq(s *Session, req *RpcRequest, pipes *Pipes) (error) {
 
 	fmt.Println("Send: ", req.Req.String(), *req.ReqId)
 
@@ -71,7 +71,15 @@ func __sendReq(s *Session, req *RpcRequest) (error) {
 		return err
 	}
 
-	s.sk.Write(pkt)
+	rights := syscall.UnixRights() //FIXME
+	if pipes != nil {
+		rights = syscall.UnixRights(pipes.Stdin, pipes.Stdout, pipes.Stderr)
+	}
+
+	_, _, err = s.sk.WriteMsgUnix(pkt, rights, nil)
+	if err != nil {
+		return err
+	}
 	fmt.Println("Send: done", req.Req.String())
 	return nil
 }
@@ -98,8 +106,8 @@ func __recvRes(s *Session) (*RpcResponce, error) {
 	return res, nil
 }
 
-func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
-	c, err := s._sendReq(req)
+func sendReqWithPipes(s *Session, req *RpcRequest, pipes *Pipes) (*RpcResponce, error) {
+	c, err := s._sendReq(req, pipes)
 	if err != nil {
 		return nil, err
 	}
@@ -107,6 +115,10 @@ func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
 	fmt.Println("Wait resp on ", req.Req.String())
 	resp := <-c
 	return resp, nil
+}
+
+func sendReq(s *Session, req *RpcRequest) (*RpcResponce, error) {
+	return sendReqWithPipes(s, req, nil)
 }
 
 var id uint64 = 0;
@@ -172,24 +184,11 @@ func (ct *Container) Run(path string, argv []string, env []string, pipes *Pipes)
 		Pipes: &pipes_here,
 	}
 
-	err := __sendReq(ct.s, req)
+	resp, err := sendReqWithPipes(ct.s, req, pipes)
 	if err != nil {
 		return 0, err
 	}
 
-	if pipes_here {
-		rights := syscall.UnixRights(pipes.Stdin, pipes.Stdout, pipes.Stderr)
-		dummyByte := []byte("x")
-		_, _, err = ct.s.sk.WriteMsgUnix(dummyByte, rights, nil)
-		if err != nil {
-			return 0, err
-		}
-	}
-
-	resp, err := __recvRes(ct.s)
-	if err != nil {
-		return 0, err
-	}
 
 	return resp.Execv.GetPid(), err
 }

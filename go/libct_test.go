@@ -35,13 +35,11 @@ func TestCreateCT(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	return
-
 	// exec
 	argv := make([]string, 3)
 	argv[0] = "bash"
 	argv[1] = "-c"
-	argv[2] = "echo Hello; sleep 10"
+	argv[2] = "echo Hello; sleep 1"
 //	argv[2] = "sleep 10"
 	env := make([]string, 0)
 	pid, err := ct.Run("/bin/bash", argv, env, &pipes)

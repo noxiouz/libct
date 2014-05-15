@@ -32,16 +32,18 @@ int rpc_async_add(RpcRequest *req, void *args)
 
 int rpc_async_run(libct_session_t s, int type, void *args)
 {
-	struct rpc_async_req *req;
+	struct rpc_async_req *req, *t;
 	int ret;
 
-	list_for_each_entry(req, &rpc_async_list, node) {
+	list_for_each_entry_safe(req, t, &rpc_async_list, node) {
 		pr_err("\n");
 		ret = s->ops->async_cb(s, req->req, req->args, type,  args);
 		if (ret < 0)
 			return -1;
-		if (ret == 1)
+		if (ret == 1) {
+			pr_err("\n");
 			list_del(&req->node);
+		}
 	}
 
 	return 0;

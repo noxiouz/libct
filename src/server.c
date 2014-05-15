@@ -27,9 +27,11 @@
 #include "protobuf/rpc.pb-c.h"
 
 #define MAX_MSG		4096
+#define NR_FDS		3
 
 /* Buffer for keeping serialized messages */
 static unsigned char dbuf[MAX_MSG];
+static int dfds[3];
 
 typedef struct {
 	struct list_head	list;
@@ -208,59 +210,56 @@ static int serve_get_state(int sk, ct_server_t *cs, RpcRequest *req)
 }
 
 
-int recv_fds(int sk, int *fds, int nr_fds)
+int recv_pkt(int sk)
 {
-	char data[1024], control[1024];
+	char control[1024];
 	struct msghdr	msg;
 	struct cmsghdr	*cmsg;
 	struct iovec	iov;
-	int i, nr = 0;
+	int i, nr = 0, ret;
 
 	memset(&msg, 0, sizeof(msg));
-	iov.iov_base   = data;
-	iov.iov_len    = sizeof(data)-1;
+	iov.iov_base   = dbuf;
+	iov.iov_len    = sizeof(dbuf)-1;
 	msg.msg_iov    = &iov;
 	msg.msg_iovlen = 1;
 	msg.msg_control = control;
 	msg.msg_controllen = sizeof(control);
-	if (recvmsg(sk, &msg, 0) < 0)
+	ret = recvmsg(sk, &msg, 0);
+	if (ret < 0)
 		return -1;
+	if (ret == 0)
+		return 0;
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 	while (cmsg != NULL) {
 		if (cmsg->cmsg_level == SOL_SOCKET &&
 		    cmsg->cmsg_type  == SCM_RIGHTS) {
 			nr = (cmsg->cmsg_len - sizeof(struct cmsghdr)) / sizeof(int);
-			if (nr > nr_fds)
+			if (nr != NR_FDS)
 				return -1;
 			for (i = 0; i < nr; i++) {
-				fds[i] = *((int *) CMSG_DATA(cmsg) + i);
+				dfds[i] = *((int *) CMSG_DATA(cmsg) + i);
 			}
 		}
                 cmsg = CMSG_NXTHDR(&msg, cmsg);
 	}
 
-	return nr;
+	return ret;
 }
 static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 {
 	int ret = -1;
-	int fds[3];
-	int i, nr_fds = 0;
+	int i, nr_fds = 3;
 	RpcResponce resp = RPC_RESPONCE__INIT;
 	ExecvResp ex = EXECV_RESP__INIT;
 
 	resp.execv = &ex;
+	resp.req_id = req->req_id;
 
 	if (req->execv) {
 		ExecvReq *er = req->execv;
 		char **argv;
-
-		if (req->execv->pipes) {
-			nr_fds = recv_fds(sk, fds, 3);
-			if (nr_fds != 3)
-				goto out;
-		}
 
 		argv = xmalloc((er->n_args + 1) * sizeof(char *));
 		if (!argv)
@@ -270,7 +269,7 @@ static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 			argv[i] = er->args[i];
 		argv[i] = NULL;
 
-		ret = libct_container_spawn_execv(cs->ct, er->path, argv, nr_fds ? fds : NULL);
+		ret = libct_container_spawn_execv(cs->ct, er->path, argv, req->execv->pipes ? dfds : NULL);
 		if (ret > 0) {
 			ex.pid = ret;
 			ret = 0;
@@ -280,7 +279,7 @@ static int serve_spawn(int sk, ct_server_t *cs, RpcRequest *req)
 	}
 out:
 	for (i = 0; i < nr_fds; i++)
-		close(fds[i]);
+		close(dfds[i]);
 	return do_send_resp(sk, ret, &resp);
 }
 
@@ -566,7 +565,7 @@ static int serve(int sk, libct_session_t ses)
 	RpcRequest *req;
 	int ret;
 
-	ret = recv(sk, dbuf, MAX_MSG, 0);
+	ret = recv_pkt(sk);
 	if (ret <= 0)
 		return -1;
 
