@@ -19,7 +19,7 @@
 
 static unsigned int current_loglevel = DEFAULT_LOGLEVEL;
 static char logbuf[PAGE_SIZE];
-static int logfd = -1;
+static int logfd = 2;
 
 static void log_set_fd(int fd)
 {
