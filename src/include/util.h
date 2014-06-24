@@ -11,6 +11,6 @@
 		s; })
 
 
-extern int bind_mount(char *src, char *dst);
+extern int bind_mount(char *src, char *dst, int flags);
 
 #endif /* __LIBCT_UTIL_H__ */
