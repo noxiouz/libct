@@ -7,6 +7,7 @@ package libct
 import "C"
 import "fmt"
 import "os"
+import "unsafe"
 
 const (
 	LIBCT_OPT_AUTO_PROC_MOUNT = C.LIBCT_OPT_AUTO_PROC_MOUNT
@@ -162,6 +163,22 @@ func (ct *Container) SetOption(opt int32) error {
 func (ct *Container) AddDeviceNode(path string, mode int, major int, minor int) error {
 
 	ret := C.libct_fs_add_devnode(ct.ct, C.CString(path), C.int(mode), C.int(major), C.int(minor))
+
+	if ret != 0 {
+		return LibctError{int(ret)}
+	}
+
+	return nil
+}
+
+func (ct *Container) AddNetVeth(host_name string, ct_name string) error {
+
+	var args C.struct_ct_net_veth_arg;
+
+	args.host_name = C.CString(host_name)
+	args.ct_name = C.CString(ct_name)
+
+	ret := C.libct_net_add(ct.ct, C.CT_NET_VETH, unsafe.Pointer(&args))
 
 	if ret != 0 {
 		return LibctError{int(ret)}
