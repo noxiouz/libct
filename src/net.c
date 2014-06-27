@@ -9,6 +9,7 @@
 
 #include "xmalloc.h"
 #include "list.h"
+#include "err.h"
 #include "net.h"
 #include "ct.h"
 
@@ -19,7 +20,6 @@
 /*
  * Move network device @name into task's @pid net namespace
  */
-
 
 static struct nl_sock *net_get_sock()
 {
@@ -141,7 +141,7 @@ void net_stop(struct container *ct)
 		cn->ops->stop(ct, cn);
 }
 
-int local_net_add(ct_handler_t h, enum ct_net_type ntype, void *arg)
+net_dev_t local_net_add(ct_handler_t h, enum ct_net_type ntype, void *arg)
 {
 	struct container *ct = cth2ct(h);
 	const struct ct_net_ops *nops;
@@ -149,25 +149,25 @@ int local_net_add(ct_handler_t h, enum ct_net_type ntype, void *arg)
 
 	if (ct->state != CT_STOPPED)
 		/* FIXME -- implement */
-		return -LCTERR_BADCTSTATE;
+		return ERR_PTR(-LCTERR_BADCTSTATE);
 
 	if (!(ct->nsmask & CLONE_NEWNET))
-		return -LCTERR_NONS;
+		return ERR_PTR(-LCTERR_NONS);
 
 	if (ntype == CT_NET_NONE)
 		return 0;
 
 	nops = net_get_ops(ntype);
 	if (!nops)
-		return -LCTERR_BADTYPE;
+		return ERR_PTR(-LCTERR_BADTYPE);
 
 	cn = nops->create(arg);
 	if (!cn)
-		return -LCTERR_BADARG;
+		return ERR_PTR(-LCTERR_BADARG);
 
 	cn->ops = nops;
 	list_add_tail(&cn->l, &ct->ct_nets);
-	return 0;
+	return (net_dev_t) cn->link;
 }
 
 int local_net_del(ct_handler_t h, enum ct_net_type ntype, void *arg)
@@ -199,7 +199,7 @@ int local_net_del(ct_handler_t h, enum ct_net_type ntype, void *arg)
 	return -LCTERR_NOTFOUND;
 }
 
-int libct_net_add(ct_handler_t ct, enum ct_net_type ntype, void *arg)
+net_dev_t libct_net_add(ct_handler_t ct, enum ct_net_type ntype, void *arg)
 {
 	return ct->ops->net_add(ct, ntype, arg);
 }

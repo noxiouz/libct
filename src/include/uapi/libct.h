@@ -113,9 +113,6 @@ struct ct_net_veth_arg {
 	/* FIXME -- macs */
 };
 
-extern int libct_net_add(ct_handler_t ct, enum ct_net_type ntype, void *arg);
-extern int libct_net_del(ct_handler_t ct, enum ct_net_type ntype, void *arg);
-
 /*
  * Options
  */
@@ -143,5 +140,12 @@ extern int libct_container_set_option(ct_handler_t ct, int opt, void *args);
 extern int libct_container_set_console_fd(ct_handler_t ct, int tty_fd);
 
 extern int libct_fs_add_devnode(ct_handler_t ct, char *path, int mode, int major, int minor);
+
+struct net_dev;
+typedef struct net_dev *net_dev_t;
+
+extern net_dev_t libct_net_add(ct_handler_t ct, enum ct_net_type ntype, void *arg);
+extern int libct_net_del(ct_handler_t ct, enum ct_net_type ntype, void *arg);
+
 
 #endif /* __UAPI_LIBCT_H__ */
