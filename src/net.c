@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <sched.h>
 
+#include <netinet/ether.h>
+
 #include <netlink/netlink.h>
 #include <netlink/route/link.h>
 #include <netlink/route/link/veth.h>
@@ -380,4 +382,15 @@ const struct ct_net_ops *net_get_ops(enum ct_net_type ntype)
 	}
 
 	return NULL;
+}
+
+int libct_net_dev_set_mac(net_dev_t d, char *mac)
+{
+	struct rtnl_link *link = (struct rtnl_link *) d;
+	struct nl_addr* addr;
+
+	addr = nl_addr_build(AF_LLC, ether_aton(mac), ETH_ALEN);
+	rtnl_link_set_addr(link, addr);
+
+	return 0;
 }
