@@ -68,7 +68,7 @@ export VERSION_MAJOR VERSION_MINOR VERSION_SUBLEVEL VERSION_EXTRA VERSION_NAME
 include scripts/Makefile.version
 include scripts/Makefile.config
 
-LIBS		:= -lrt
+LIBS		:= -lrt -L/home/avagin/git/libnl/lib/.libs/
 
 DEFINES		+= -D_FILE_OFFSET_BITS=64
 DEFINES		+= -D_GNU_SOURCE

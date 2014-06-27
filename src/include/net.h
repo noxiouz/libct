@@ -26,6 +26,7 @@ struct ct_net_ops {
 
 struct ct_net {
 	struct list_head	l;
+	struct rtnl_link	*link;
 	const struct ct_net_ops	*ops;
 };
 
