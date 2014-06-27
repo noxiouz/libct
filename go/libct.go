@@ -1,7 +1,7 @@
 package libct
 
 // #cgo CFLAGS: -DCONFIG_X86_64 -DARCH="x86" -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
-// #cgo LDFLAGS: -lct
+// #cgo LDFLAGS: -lct -lnl-3 -lnl-route-3 -L/home/avagin/git/libnl/lib/.libs/
 // #include "../src/include/uapi/libct.h"
 // #include "../src/include/uapi/libct-errors.h"
 import "C"
@@ -19,6 +19,10 @@ type Session struct {
 
 type Container struct {
 	ct C.ct_handler_t
+}
+
+type NetDev struct {
+	d C.net_dev_t;
 }
 
 type LibctError struct {
@@ -171,14 +175,24 @@ func (ct *Container) AddDeviceNode(path string, mode int, major int, minor int) 
 	return nil
 }
 
-func (ct *Container) AddNetVeth(host_name string, ct_name string) error {
+func (ct *Container) AddNetVeth(host_name string, ct_name string) (*NetDev, error) {
 
 	var args C.struct_ct_net_veth_arg;
 
 	args.host_name = C.CString(host_name)
 	args.ct_name = C.CString(ct_name)
 
-	ret := C.libct_net_add(ct.ct, C.CT_NET_VETH, unsafe.Pointer(&args))
+	d := C.libct_net_add(ct.ct, C.CT_NET_VETH, unsafe.Pointer(&args))
+
+	if C.libct_handle_is_err(unsafe.Pointer(d)) != 0 {
+		return nil, LibctError{int(C.libct_handle_to_err(unsafe.Pointer(d)))}
+	}
+
+	return &NetDev{d}, nil
+}
+
+func (d *NetDev) SetMac(mac string) error {
+	ret := C.libct_net_dev_set_mac(d.d, C.CString(mac))
 
 	if ret != 0 {
 		return LibctError{int(ret)}
