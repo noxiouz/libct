@@ -8,7 +8,7 @@ PIGS  = file_piggy
 
 CC = gcc
 CFLAGS = -I../src/include/uapi/ -g
-LDFLAGS = -Wl,--no-as-needed -lct -L../src/ -L/home/avagin/git/libnl/lib/.libs/ -lnl-3 -lnl-route-3
+LDFLAGS = -Wl,--no-as-needed -lct -L../src/ -L../.shipped/libnl/lib/.libs/ -lnl-route-3 -lnl-3
 OUTS = $(TESTS:%=%.out)
 
 all: $(PIGS) $(TESTS)

@@ -40,6 +40,28 @@ static struct nl_sock *net_get_sock()
 	return sk;
 }
 
+static struct nl_cache *net_get_link_cache()
+{
+	static struct nl_cache *cache;
+	struct nl_sock *sk;
+	int err;
+
+	if (cache)
+		return cache;
+
+	sk = net_get_sock();
+	if (sk == NULL)
+		return NULL;
+
+	err = rtnl_link_alloc_cache(sk, AF_UNSPEC, &cache);
+	if (err) {
+		pr_err("Unable to alloc link cache: %s", nl_geterror(err));
+		return NULL;
+	}
+
+	return cache;
+}
+
 static int net_nic_chnage(char *name, struct rtnl_link *link)
 {
 	struct rtnl_link *orig;
@@ -88,6 +110,7 @@ struct ct_net_veth {
 static int veth_pair_create(struct rtnl_link *link, int ct_pid)
 {
 	struct nl_sock *sk;
+	struct rtnl_link *peer, *orig;
 	int err;
 
 	sk = net_get_sock();
@@ -98,6 +121,26 @@ static int veth_pair_create(struct rtnl_link *link, int ct_pid)
 
 	if ((err = rtnl_link_add(sk, link, NLM_F_CREATE)) < 0) {
                 nl_perror(err, "Unable to add link");
+                return err;
+        }
+
+	peer = rtnl_link_veth_get_peer(link);
+
+	struct nl_cache *c = net_get_link_cache(sk);
+	orig = rtnl_link_get_by_name(c, rtnl_link_get_name(peer));
+	if (orig == NULL)
+		return -1;
+
+	pr_err("\n");
+
+	peer = rtnl_link_alloc();
+
+
+//	rtnl_link_set_master(peer, 4);
+	rtnl_link_set_name(peer, "xxx");
+	rtnl_link_set_flags(peer, IFF_UP);
+	if ((err = rtnl_link_change(sk, orig, peer, 0)) < 0) {
+                nl_perror(err, "Unable to change link");
                 return err;
         }
 
@@ -391,6 +434,28 @@ int libct_net_dev_set_mac(net_dev_t d, char *mac)
 
 	addr = nl_addr_build(AF_LLC, ether_aton(mac), ETH_ALEN);
 	rtnl_link_set_addr(link, addr);
+
+	return 0;
+}
+
+int libct_net_dev_set_master(net_dev_t d, char *master)
+{
+	struct rtnl_link *link = (struct rtnl_link *) d;
+	struct nl_cache *cache;
+	int ifindex;
+
+	cache = net_get_link_cache();
+	if (cache == NULL)
+		return 0;
+
+	ifindex = rtnl_link_name2i(cache, master);
+	if (ifindex == 0) {
+		pr_err("Can't find %s\n", master);
+		return -1;
+	}
+
+	pr_err("%d\n", ifindex);
+	rtnl_link_set_master(link, ifindex);
 
 	return 0;
 }

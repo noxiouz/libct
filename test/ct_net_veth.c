@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 	libct_session_t s;
 	ct_handler_t ct;
 	struct ct_net_veth_arg va;
-	net_dev_t nd;
+	net_dev_t nd, peer;
 
 	ca.mark = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_ANON, 0, 0);
@@ -60,6 +60,9 @@ int main(int argc, char **argv)
 		return err("Can't add hostnic");
 
 	libct_net_dev_set_mac(nd, "00:11:22:33:44:55");
+	peer = libct_net_dev_get_peer(nd);
+	libct_net_dev_set_mac(peer, "00:11:22:33:44:66");
+//	libct_net_dev_set_master(peer, "docker0");
 
 	if (libct_container_spawn_cb(ct, check_ct_net, &ca))
 		return err("Can't spawn CT");
@@ -67,6 +70,7 @@ int main(int argc, char **argv)
 	if (!system("ip link l " VETH_HOST_NAME ""))
 		ca.mark[1] = 1;
 
+	sleep(100);
 	write(p[1], "a", 1);
 
 	libct_container_wait(ct);

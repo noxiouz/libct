@@ -14,9 +14,8 @@ obj-y			+= async.o
 obj-y			+= util.o
 obj-y			+= devnodes.o
 
-cflags-y		+= -I.shipped/libnl/include/
 cflags-y		+= -fPIC -Wa,--noexecstack -fno-stack-protector
-cflags-so		+= -rdynamic -L.shipped/libnl/lib/.libs/ -lnl-route-3 -lnl-3
+cflags-so		+= -rdynamic
 
 .SECONDARY:
 
