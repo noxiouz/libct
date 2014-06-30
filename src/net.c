@@ -394,3 +394,10 @@ int libct_net_dev_set_mac(net_dev_t d, char *mac)
 
 	return 0;
 }
+
+net_dev_t libct_net_dev_get_peer(net_dev_t d)
+{
+	struct rtnl_link *link = (struct rtnl_link *) d;
+
+        return (net_dev_t) rtnl_link_veth_get_peer(link);
+}

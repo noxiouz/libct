@@ -147,6 +147,7 @@ typedef struct net_dev *net_dev_t;
 extern net_dev_t libct_net_add(ct_handler_t ct, enum ct_net_type ntype, void *arg);
 extern int libct_net_del(ct_handler_t ct, enum ct_net_type ntype, void *arg);
 extern int libct_net_dev_set_mac(net_dev_t d, char *mac);
+extern net_dev_t libct_net_dev_get_peer(net_dev_t d);
 
 
 #endif /* __UAPI_LIBCT_H__ */
