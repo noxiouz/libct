@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sched.h>
+#include <unistd.h>
 #include "test.h"
 
 #define VETH_HOST_NAME	"hveth0"
@@ -23,8 +24,10 @@ static int check_ct_net(void *a)
 	char c;
 
 	ca->mark[0] = 1;
-	if (!system("ip link l " VETH_CT_NAME ""))
+	if (!system("ip a l " VETH_CT_NAME ""))
 		ca->mark[2] = 1;
+
+	system("ip r");
 
 	read(ca->wait_pipe, &c, 1);
 	return 0;
@@ -37,7 +40,9 @@ int main(int argc, char **argv)
 	libct_session_t s;
 	ct_handler_t ct;
 	struct ct_net_veth_arg va;
-	ct_net_t nd;
+	ct_net_t nd, peer;
+	ct_net_route_t r;
+	ct_net_route_nh_t nh;
 
 	ca.mark = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_ANON, 0, 0);
@@ -62,10 +67,25 @@ int main(int argc, char **argv)
 	if (libct_net_dev_set_mac_addr(nd, "00:11:22:33:44:55"))
 		return err("Can't set mac");
 
+	if (libct_net_dev_add_ip_addr(nd, "192.168.87.124/24"))
+		return err("Can't set ip");
+
+	peer = libct_net_dev_get_peer(nd);
+
+	r = libct_net_route_add(ct);
+	if (r == NULL)
+		return err("Can't allocate an route entry");
+
+	libct_net_route_set_dst(r, "192.168.88.0/24");
+	libct_net_route_set_dev(r, "cveth0");
+
+	nh = libct_net_route_add_nh(r);
+	libct_net_route_nh_set_gw(nh, "192.168.87.123/24");
+
 	if (libct_container_spawn_cb(ct, check_ct_net, &ca))
 		return err("Can't spawn CT");
 
-	if (!system("ip link l " VETH_HOST_NAME ""))
+	if (!system("ip a l " VETH_HOST_NAME ""))
 		ca.mark[1] = 1;
 
 	write(p[1], "a", 1);
