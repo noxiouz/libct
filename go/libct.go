@@ -164,6 +164,15 @@ func (ct *Container) AddBindMount(src string, dst string, flags int) error {
 	return nil
 }
 
+func (ct *Container) AddMount(src string, dst string, flags int, fstype string, data string) error {
+
+	if ret := C.libct_fs_add_mount(ct.ct, C.CString(src), C.CString(dst), C.int(flags), C.CString(fstype), C.CString(data)); ret != 0 {
+		return LibctError{int(ret)}
+	}
+
+	return nil
+}
+
 func (ct *Container) SetOption(opt int32) error {
 	if ret := C.libct_container_set_option(ct.ct, C.int(opt), nil); ret != 0 {
 		return LibctError{int(ret)}
