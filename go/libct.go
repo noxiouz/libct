@@ -71,6 +71,16 @@ func (ct *Container) SetNsMask(nsmask uint64) error {
 	return nil
 }
 
+func (ct *Container) Kill() error {
+	ret := C.libct_container_kill(ct.ct)
+
+	if ret != 0 {
+		return LibctError{int(ret)}
+	}
+
+	return nil
+}
+
 func (ct *Container) SetConsoleFd(f *os.File) error {
 	ret := C.libct_container_set_console_fd(ct.ct, C.int(f.Fd()))
 
