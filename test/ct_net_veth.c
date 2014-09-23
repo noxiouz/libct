@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 	nh = libct_net_route_add_nh(r);
 	libct_net_route_nh_set_gw(nh, "192.168.87.123/24");
 
-	if (libct_container_spawn_cb(ct, check_ct_net, &ca))
+	if (libct_container_spawn_cb(ct, check_ct_net, &ca) < 0)
 		return err("Can't spawn CT");
 
 	if (!system("ip a l " VETH_HOST_NAME ""))
