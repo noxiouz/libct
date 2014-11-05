@@ -71,6 +71,7 @@ static void local_desc_destroy(ct_process_desc_t h)
 {
 	struct process_desc *p = prh2pr(h);
 
+	xfree(p->lsm_label);
 	xfree(p->groups);
 	xfree(p);
 }
@@ -97,6 +98,19 @@ ct_process_desc_t local_desc_copy(ct_process_desc_t h)
 	return &c->h;
 }
 
+int local_desc_set_lsm_label(ct_process_desc_t h, char *label)
+{
+	struct process_desc *p = prh2pr(h);
+	char *l;
+
+	l = xstrdup(label);
+	if (l == NULL)
+		return -1;
+
+	p->lsm_label = l;
+	return 0;
+}
+
 static const struct process_desc_ops local_process_ops = {
 	.copy		= local_desc_copy,
 	.destroy	= local_desc_destroy,
@@ -105,6 +119,7 @@ static const struct process_desc_ops local_process_ops = {
 	.setgroups	= local_desc_setgroups,
 	.set_caps	= local_desc_set_caps,
 	.set_pdeathsig	= local_desc_set_pdeathsig,
+	.set_lsm_label	= local_desc_set_lsm_label,
 };
 
 void local_process_init(struct process_desc *p)
