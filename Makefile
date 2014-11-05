@@ -52,7 +52,7 @@ ifneq ($(ARCH),x86)
 $(error "The architecture $(ARCH) isn't supported"))
 endif
 
-cflags-y	+= -iquote src/include
+cflags-y	+= -iquote src/include -iquote src/lsm -iquote src
 cflags-y	+= -fno-strict-aliasing
 cflags-y	+= -I/usr/include
 export cflags-y
@@ -84,6 +84,14 @@ ifeq ($(DEBUG),1)
 	CFLAGS	+= -O0 -ggdb3
 else
 	CFLAGS	+= -O2 -ggdb3
+endif
+
+ifdef CONFIG_APPARMOR
+	DEFINES += -DHAVE_APPARMOR
+endif
+
+ifdef CONFIG_SELINUX
+	DEFINES += -DHAVE_SELINUX
 endif
 
 CFLAGS		+= $(WARNINGS) $(DEFINES)

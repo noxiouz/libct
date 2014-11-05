@@ -14,6 +14,11 @@ LDFLAGS = -Wl,--no-as-needed \
 	-lct -L../src/ -Wl,-rpath,'$$ORIGIN/../src' \
 	-lnl-route-3 -lnl-3 -L$(LIBNLDIR) -Wl,-rpath,'$$ORIGIN/$(LIBNLDIR)'
 
+ifdef CONFIG_APPARMOR
+LDFLAGS += -lapparmor
+TESTS += ct_apparmor
+endif
+
 OUTS = $(TESTS:%=%.out)
 
 all: $(PIGS) $(TESTS)
