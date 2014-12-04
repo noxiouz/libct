@@ -149,11 +149,11 @@ func (p *ProcessDesc) SetLSMLabel(label string) error {
 }
 
 func (p *ProcessDesc) Wait() (int, error) {
-	var status int
+	var status C.int
 
 	if ret := C.libct_process_wait(p.handle, &status); ret != 0 {
 		return -1, LibctError{int(ret)}
 	}
 
-	return status, nil
+	return int(status), nil
 }

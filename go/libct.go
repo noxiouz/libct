@@ -134,21 +134,19 @@ func (ct *Container) SpawnExecve(p *ProcessDesc, path string, argv []string, env
 
 	p.childFiles = append(p.childFiles, p.ExtraFiles...)
 
-	_, err := ct.execve(p, path, argv, env, true)
+	err := ct.execve(p, path, argv, env, true)
 
 	return err
 }
 
 func (ct *Container) EnterExecve(p *ProcessDesc, path string, argv []string, env []string) (error) {
-	h, err := ct.execve(p, path, argv, env, false)
-	p.handle = h
+	err := ct.execve(p, path, argv, env, false)
 	p.closeDescriptors(p.closeAfterStart)
 	return err
 }
 
-func (ct *Container) execve(p *ProcessDesc, path string, argv []string, env []string, spawn bool) (C.ct_process_t, error) {
+func (ct *Container) execve(p *ProcessDesc, path string, argv []string, env []string, spawn bool) (error) {
 	var (
-		ret   int
 		h     C.ct_process_t
 	)
 
@@ -170,18 +168,18 @@ func (ct *Container) execve(p *ProcessDesc, path string, argv []string, env []st
 	C.libct_process_desc_set_fds(p.desc, &cfds[0], C.int(len(p.childFiles)))
 
 	if spawn {
-		ret = int(C.libct_container_spawn_execve(ct.ct, p.desc, C.CString(path), &cargv[0], &cenv[0]))
+		h = C.libct_container_spawn_execve(ct.ct, p.desc, C.CString(path), &cargv[0], &cenv[0])
 	} else {
 		h = C.libct_container_enter_execve(ct.ct, p.desc, C.CString(path), &cargv[0], &cenv[0])
-		if C.libct_handle_is_err(unsafe.Pointer(h)) != 0 {
-			ret = int(C.libct_handle_to_err(unsafe.Pointer(h)))
-		}
-	}
-	if ret != 0 {
-		return nil, LibctError{int(ret)}
 	}
 
-	return h, nil
+	if C.libct_handle_is_err(unsafe.Pointer(h)) != 0 {
+		return  LibctError{int(C.libct_handle_to_err(unsafe.Pointer(h)))}
+	}
+
+	p.handle = h
+
+	return nil
 }
 
 func (ct *Container) Wait() error {

@@ -28,6 +28,7 @@ int main(int argc, char **argv)
 	libct_session_t s;
 	ct_handler_t ct;
 	ct_process_desc_t p;
+	ct_process_t pr;
 	ct_net_t nd;
 
 	test_init(argc, argv);
@@ -51,7 +52,8 @@ int main(int argc, char **argv)
 		system("ip link del dm0");
 		return tst_err("Can't add hostnic");
 	}
-	if (libct_container_spawn_cb(ct, p, check_ct_net, ct_status) < 0) {
+	pr = libct_container_spawn_cb(ct, p, check_ct_net, ct_status);
+	if (libct_handle_is_err(pr)) {
 		system("ip link del dm0");
 		return tst_err("Can't spawn CT");
 	}

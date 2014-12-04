@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	libct_session_t s;
 	ct_handler_t ct;
 	ct_process_desc_t pd;
-	ct_process_t pr;
+	ct_process_t pr, p;
 	char *sleep_a[] = { "cat", NULL};
 	char *ls_a[] = { "sh", "-c", "echo ok", NULL};
 	int fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
@@ -42,7 +42,8 @@ int main(int argc, char *argv[])
 	fds[0] = pfd[0];
 	fcntl(pfd[1], F_SETFD, FD_CLOEXEC);
 	libct_process_desc_set_fds(pd, fds, 3);
-	if (libct_container_spawn_execv(ct, pd, "/bin/cat", sleep_a))
+	p = libct_container_spawn_execv(ct, pd, "/bin/cat", sleep_a);
+	if (libct_handle_is_err(p))
 		goto err;
 	close(pfd[0]);
 

@@ -361,7 +361,7 @@ err:
 	return exit_code;
 }
 
-static int __local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void *), void *arg, bool is_exec)
+static ct_process_t __local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void *), void *arg, bool is_exec)
 {
 	struct container *ct = cth2ct(h);
 	struct process_desc *p = prh2pr(ph);
@@ -369,11 +369,11 @@ static int __local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void
 	struct ct_clone_arg ca;
 
 	if (ct->state != CT_STOPPED)
-		return -LCTERR_BADCTSTATE;
+		return ERR_PTR(-LCTERR_BADCTSTATE);
 
 	ret = fs_mount(ct);
 	if (ret)
-		return ret;
+		return ERR_PTR(ret);
 
 	if ((ct->flags & CT_KILLABLE) && !(ct->nsmask & CLONE_NEWPID)) {
 		if (add_service_controller(ct))
@@ -430,7 +430,7 @@ static int __local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void
 	}
 
 	ct->state = CT_RUNNING;
-	return 0;
+	return &ct->p.h;
 
 err_ch:
 	net_stop(ct);
@@ -448,10 +448,10 @@ err_pipe:
 	cgroups_destroy(ct);
 err_cg:
 	fs_umount(ct);
-	return ret;
+	return ERR_PTR(ret);
 }
 
-static int local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void *), void *arg)
+static ct_process_t local_spawn_cb(ct_handler_t h, ct_process_desc_t ph, int (*cb)(void *), void *arg)
 {
 	return __local_spawn_cb(h, ph, cb, arg, false);
 }
@@ -473,7 +473,7 @@ static int ct_execv(void *a)
 	return -1;
 }
 
-static int local_spawn_execve(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv, char **env)
+static ct_process_t local_spawn_execve(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv, char **env)
 {
 	struct execv_args ea;
 	struct process_desc *p = prh2pr(pr);

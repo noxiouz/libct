@@ -55,21 +55,21 @@ enum ct_state libct_container_state(ct_handler_t h)
 	return h->ops->get_state(h);
 }
 
-int libct_container_spawn_cb(ct_handler_t ct, ct_process_desc_t pr, int (*cb)(void *), void *arg)
+ct_process_t libct_container_spawn_cb(ct_handler_t ct, ct_process_desc_t pr, int (*cb)(void *), void *arg)
 {
 	/* This one is optional -- only local ops support */
 	if (!ct->ops->spawn_cb)
-		return -LCTERR_OPNOTSUPP;
+		return ERR_PTR(-LCTERR_OPNOTSUPP);
 
 	return ct->ops->spawn_cb(ct, pr, cb, arg);
 }
 
-int libct_container_spawn_execv(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv)
+ct_process_t libct_container_spawn_execv(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv)
 {
 	return libct_container_spawn_execve(ct, pr, path, argv, NULL);
 }
 
-int libct_container_spawn_execve(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv, char **env)
+ct_process_t libct_container_spawn_execve(ct_handler_t ct, ct_process_desc_t pr, char *path, char **argv, char **env)
 {
 	return ct->ops->spawn_execve(ct, pr, path, argv, env);
 }

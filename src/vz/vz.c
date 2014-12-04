@@ -835,13 +835,13 @@ err:
 	return ret;
 }
 
-static int vz_spawn_cb(ct_handler_t h, ct_process_desc_t p, int (*cb)(void *), void *arg)
+static ct_process_t vz_spawn_cb(ct_handler_t h, ct_process_desc_t p, int (*cb)(void *), void *arg)
 {
 	pr_err("Spawn with callback is not supported");
-	return -1;
+	return ERR_PTR(-1);
 }
 
-static int vz_spawn_execve(ct_handler_t h, ct_process_desc_t p, char *path, char **argv, char **env)
+static ct_process_t vz_spawn_execve(ct_handler_t h, ct_process_desc_t p, char *path, char **argv, char **env)
 {
 	int ret = -1;
 	int child_wait[2];
@@ -949,7 +949,7 @@ static int vz_spawn_execve(ct_handler_t h, ct_process_desc_t p, char *path, char
 	proc_wake_close(child_wait, 0);
 	priv->exec_waiting_pid = pid;
 	ct->state = CT_RUNNING;
-	return 0;
+	return &ct->p.h;
 
 err_wait:
 	net_stop(ct);
@@ -964,7 +964,7 @@ err_pipe:
 	close(child_wait[0]);
 	close(child_wait[1]);
 err:
-	return ret;
+	return ERR_PTR(ret);
 }
 
 static int vz_set_option(ct_handler_t h, int opt, void *args)
