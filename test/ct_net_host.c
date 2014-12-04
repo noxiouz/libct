@@ -30,6 +30,8 @@ int main(int argc, char **argv)
 	ct_process_desc_t p;
 	ct_net_t nd;
 
+	test_init(argc, argv);
+
 	ct_status = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_ANON, 0, 0);
 	ct_status[0] = 0;

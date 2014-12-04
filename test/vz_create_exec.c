@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 			CLONE_NEWNET |
 			CLONE_NEWPID);
 
-	if (libct_container_spawn_execv(ct, p, "/bin/ls", ls_a) <= 0)
+	if (libct_container_spawn_execv(ct, p, "/bin/ls", ls_a))
 		goto err;
 
 	libct_container_wait(ct);
