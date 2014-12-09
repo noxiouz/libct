@@ -84,7 +84,6 @@ int main(int argc, char *argv[])
 	ct_handler_t ct;
 	ct_process_desc_t p;
 	char *sleep_a[] = { "sleep", "2", NULL};
-	int fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
 	int pid;
 
 	s = libct_session_open_local();
@@ -102,7 +101,7 @@ int main(int argc, char *argv[])
 	libct_controller_add(ct, CTL_BLKIO);
 	libct_controller_configure(ct, CTL_BLKIO, "throttle.write_iops_device", IOPSLIMIT_STR);
 	libct_controller_configure(ct, CTL_BLKIO, "weight", IOPRIOLIMIT_STR);
-	if ((pid = libct_container_spawn_execvfds(ct, p, "/bin/sleep", sleep_a, fds)) <= 0)
+	if ((pid = libct_container_spawn_execv(ct, p, "/bin/sleep", sleep_a)) <= 0)
 		goto err;
 
 	if (!is_iopslimit_correct(IOPSLIMIT))

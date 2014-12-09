@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 	ct_handler_t ct;
 	ct_process_desc_t p;
 	char *run_a[3] = { "sleep", "2", NULL};
-	int fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+
+	test_init(argc, argv);
 
 	s = libct_session_open_local();
 	ct = libct_container_create(s, CT_NAME);
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
 	libct_controller_add(ct, CTL_MEMORY);
 	libct_controller_configure(ct, CTL_MEMORY, "limit_in_bytes", MEMLIMIT_STR);
 
-	if (libct_container_spawn_execvfds(ct, p, "/bin/sleep", run_a, fds) <= 0)
+	if (libct_container_spawn_execv(ct, p, "/bin/sleep", run_a) <= 0)
 		goto err;
 
 	if (!is_memory_correct(MEMLIMIT))

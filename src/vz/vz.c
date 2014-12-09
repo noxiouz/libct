@@ -709,6 +709,9 @@ struct ct_clone_arg {
 	struct info_pipes *pipes;
 	struct execv_args *ea;
 	unsigned int veid;
+	int proc_fd;
+	int *fds;
+	int fdn;
 };
 
 static int ct_clone(void *arg)
@@ -720,6 +723,13 @@ static int ct_clone(void *arg)
 	if (ret)
 		goto err;
 
+	if (ca->fds) {
+		ca->fds[ca->fdn] = ca->pipes->parent_wait[1];
+		if (setup_fds_at(ca->proc_fd, ca->fds, ca->fdn + 1))
+			goto err;
+		ca->pipes->parent_wait[1] = ca->fdn;
+	}
+
 	spawn_wake_and_cloexec(ca->pipes->parent_wait, 0);
 
 	exec_init(ca->ea);
@@ -728,15 +738,22 @@ err:
 	_exit(ret);
 }
 
-static int vz_env_create(ct_handler_t h, struct info_pipes *pipes, struct execv_args *ea)
+static int vz_env_create(ct_handler_t h, ct_process_desc_t ph, struct info_pipes *pipes, struct execv_args *ea)
 {
 	struct ct_clone_arg ca;
 	int ret, pid;
 	struct container *ct = cth2ct(h);
+	struct process_desc *p = prh2pr(ph);
 	unsigned int veid;
 
 	if (parse_uint(ct->name, &veid) < 0) {
 		pr_err("Unable to parse container's ID");
+		return -1;
+	}
+
+	ca.proc_fd = open("/proc/", O_DIRECTORY | O_RDONLY);
+	if (ca.proc_fd == -1) {
+		pr_err("Unable to open /proc/self/fd");
 		return -1;
 	}
 
@@ -757,6 +774,8 @@ static int vz_env_create(ct_handler_t h, struct info_pipes *pipes, struct execv_
 	ca.pipes = pipes;
 	ca.ea = ea;
 	ca.h = h;
+	ca.fds = p->fds;
+	ca.fdn = p->fdn;
 	pid = clone(ct_clone, &ca.stack_ptr, SIGCHLD | CLONE_PARENT, &ca);
 	if (pid < 0) {
 		pr_perror("Can not fork");
@@ -840,7 +859,7 @@ static int vz_spawn_execve(ct_handler_t h, ct_process_desc_t p, char *path, char
 		fcntl(child_wait[0], F_SETFD, FD_CLOEXEC);
 		close(child_wait[1]);
 
-		ret = vz_env_create(h, &pipes, &ea);
+		ret = vz_env_create(h, p, &pipes, &ea);
 
 		_exit(ret);
 	}
@@ -1085,18 +1104,29 @@ static int ct_enter(void *arg)
 		pr_err("vz_resourse_create");
 		_exit(1);
 	}
-	spawn_wake(ca->pipes->parent_wait, 0);
+
+	if (ca->fds) {
+		ca->fds[ca->fdn] = ca->pipes->parent_wait[1];
+		if (setup_fds_at(ca->proc_fd, ca->fds, ca->fdn + 1))
+			goto err;
+		ca->pipes->parent_wait[1] = ca->fdn;
+	}
+
+	spawn_wake_and_cloexec(ca->pipes->parent_wait, 0);
+
 	exec_init(ca->ea);
 	pr_perror("Unable to execve");
+err:
 	spawn_wake_and_close(ca->pipes->parent_wait, -1);
 	_exit(-1);
 	return -1;
 }
 
-static int vz_enter_execve(ct_handler_t h, ct_process_desc_t p, char *path, char **argv, char **env)
+static int vz_enter_execve(ct_handler_t h, ct_process_desc_t ph, char *path, char **argv, char **env)
 {
 	struct ct_clone_arg ca;
 	struct container *ct = NULL;
+	struct process_desc *p = prh2pr(ph);
 	unsigned int veid = -1;
 	int pid, child_pid, ret = 0;
 	struct execv_args ea = {
@@ -1143,6 +1173,10 @@ static int vz_enter_execve(ct_handler_t h, ct_process_desc_t p, char *path, char
 			}
 		}
 
+		ca.proc_fd = open("/proc/", O_DIRECTORY | O_RDONLY);
+		if (ca.proc_fd == -1)
+			_exit(-1);
+
 		ret = vz_resources_create(ct);
 		if (ret) {
 			pr_perror("Unable to create resources for container %ld", veid);
@@ -1165,6 +1199,8 @@ static int vz_enter_execve(ct_handler_t h, ct_process_desc_t p, char *path, char
 		ca.h = h;
 		ca.veid = veid;
 		ca.pipes = &pipes;
+		ca.fds = p->fds;
+		ca.fdn = p->fdn;
 
 		pr_info("Entering the Container %ld", veid);
 		child_pid = clone(ct_enter, &ca.stack_ptr, SIGCHLD | CLONE_PARENT, &ca);
