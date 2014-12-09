@@ -361,28 +361,6 @@ static int vz_set_io_param(struct container *ct, char *param, char *value)
 
 static int vz_cgroup_resources_set(struct container *ct)
 {
-	struct cg_config *cfg;
-	int ret = 0;
-
-	list_for_each_entry(cfg, &ct->cg_configs, l) {
-		switch (cfg->ctype) {
-		case CTL_MEMORY:
-		case CTL_BLKIO:
-			break;
-		case CTL_CPU:
-		case CTL_CPUSET:
-			ret = config_controller(ct, cfg->ctype, cfg->param, cfg->value);
-			if (ret) {
-				pr_err("local_config_controller failed %d", ret);
-				return -LCTERR_CGCONFIG;
-			}
-			break;
-		default:
-			return -LCTERR_OPNOTSUPP;
-			break;
-		}
-	}
-
 	return 0;
 }
 
@@ -405,6 +383,11 @@ static int vz_bc_resources_set(struct container *ct)
 			break;
 		case CTL_CPU:
 		case CTL_CPUSET:
+			ret = config_controller(ct, cfg->ctype, cfg->param, cfg->value);
+			if (ret) {
+				pr_err("local_config_controller failed %d", ret);
+				return -LCTERR_CGCONFIG;
+			}
 			break;
 		default:
 			return -LCTERR_OPNOTSUPP;
@@ -767,9 +750,6 @@ static int vz_env_create(ct_handler_t h, ct_process_desc_t ph, struct info_pipes
 	ret = vz_resources_create(ct);
 	if (ret)
 		goto err;
-	ret = vz_bc_resources_set(ct);
-	if (ret)
-		goto err;
 
 	ca.pipes = pipes;
 	ca.ea = ea;
@@ -881,12 +861,6 @@ static int vz_spawn_execve(ct_handler_t h, ct_process_desc_t p, char *path, char
 
 	if (spawn_wait(parent_wait) == -1) {
 		ret = -1;
-		goto err_res;
-	}
-
-	ret = vz_resources_create(ct);
-	if (ret) {
-		pr_err("vz_resource_create");
 		goto err_res;
 	}
 
@@ -1099,11 +1073,6 @@ static int ct_enter(void *arg)
 			_exit(1);
 		}
 	}
-	ret = vz_cgroup_resources_set(ct);
-	if (ret) {
-		pr_err("vz_resourse_create");
-		_exit(1);
-	}
 
 	if (ca->fds) {
 		ca->fds[ca->fdn] = ca->pipes->parent_wait[1];
@@ -1180,11 +1149,6 @@ static int vz_enter_execve(ct_handler_t h, ct_process_desc_t ph, char *path, cha
 		ret = vz_resources_create(ct);
 		if (ret) {
 			pr_perror("Unable to create resources for container %ld", veid);
-			_exit(ret);
-		}
-		ret = vz_bc_resources_set(ct);
-		if (ret) {
-			pr_perror("Unable to set bc resources for container %ld", veid);
 			_exit(ret);
 		}
 
